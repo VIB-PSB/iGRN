@@ -1,9 +1,6 @@
 library(data.table)
 library(dplyr)
-library(glm2) #logistic regression
 library(randomForest)
-library(kernlab) #svm
-library(klaR) #naive bayes
 library(caret)
 library(ROCR)
 library(gbm)
@@ -27,21 +24,17 @@ splitdf <- function(dataframe, seed=NULL) {
   list(trainset=trainset,testset=testset)
 }
 
-pos <- filter(full, Class==1)
-list_pos <- splitdf(pos)
+list_all <- splitdf(full)
+list_pos <- splitdf(filter(full, Class==1))
 
+train_all <- list_all$trainset
 neg <- sample_n(filter(train_all, Class==0), 3*nrow(list_pos$trainset))
-trainset <- rbind(list_pos$trainset,neg)
-write.table(trainset, file="train.txt", quote = F, sep = "\t")
+trainset <- as.data.table(rbind(list_pos$trainset,neg))
 
+test_all <- list_all$testset
 neg <- sample_n(filter(test_all, Class==0), 3*nrow(list_pos$testset))
-testset <- rbind(list_pos$testset,neg)
-write.table(testset, file="test.txt", quote = F, sep = "\t")
+testset <- as.data.table(rbind(list_pos$testset,neg))
 
-trainset <- fread("train.txt", header=T)
-testset <- fread("test.txt", header=T)
-trainset[, A:=NULL]
-testset[, A:=NULL]
 
 shuffled <- trainset[sample(nrow(trainset)),]
 cross <- 10
@@ -92,6 +85,8 @@ accs
 prec
 rec
 
+#section requires the creation of a test_matrix.txt with data to apply the trained model to cfr Perl script.
+
 predictor <- fread("test_matrix.txt", header=T)
 sc <- names(predictor)[2:9]
 predictor <- copy(predictor)[ , (sc) := as.data.table(scale(.SD)), .SDcols = sc]
@@ -105,3 +100,4 @@ merged_f <- filter(merged, y>0.3)
 merged_f <- mutate(merged_f,rank=rank(-y, ties.method="random"))
 merged_f <- arrange(merged_f, rank)
 write.table(merged_f, file="supervised_rank_CB_iGRN.txt", quote = F, sep = "\t")
+
